@@ -1,0 +1,8 @@
+report_safe 0
+
+add_header spam Flag _YESNOCAPS_
+add_header all Report _REPORT_
+
+use_bayes               1
+skip_rbl_checks         0
+

@@ -1,0 +1,112 @@
+#!/bin/bash
+
+set -e
+
+echo "Bongo v0.1"
+
+if [ "$1" != "" ] && [ "$1" = "-h" ]; then
+  echo "bongo uses the following environment variables:"
+  echo "  ACTION: deploy (default: deploy)"
+  echo "  IP: Specify the adresse which should be used (default: bind all)"
+  echo "  PREFIX: container prefix (default: bongo)"
+  echo "  VOLUMES: where to store volumes (default /var/volumes)"
+  echo "  FQDN: Full hostname of the mailserver (defaults to hostname --fqdn)"
+  echo "  POSTMASTER_EMAIL: Your postmaster email (default postmaster@\${FQDN})"
+  exit 1
+fi
+
+ACTION=${ACTION:-deploy}
+PREFIX=${PREFIX:-bongo}
+VOLUMES=${VOLUMES:-/var/volumes}
+FQDN=${FQDN:-`hostname --fqdn`}
+POSTMASTER_EMAIL=${POSTMASTER_EMAIL:-postmaster@${FQDN}}
+
+deploy_mx() {
+  echo " - Deploying mx"
+
+  ID=$(docker run \
+    -ti \
+    -d \
+    --restart=always \
+    --name=$PREFIX-mx \
+    -h $FQDN \
+    -p $IP:25:25 \
+    -p $IP:110:110 \
+    -p $IP:143:143 \
+    -p $IP:465:465 \
+    -p $IP:587:587 \
+    -p $IP:993:993 \
+    -p $IP:995:995 \
+    -p $IP:4190:4190 \
+    -v $VOLUMES/mail-storage:/var/mail \
+    -v $VOLUMES/clamav-storage:/var/lib/clamav \
+    -v $VOLUMES/postgrey-storage:/var/lib/postgrey \
+    -v $VOLUMES/mail-config:/config \
+    -e FQDN=$FQDN \
+    -e POSTMASTER_EMAIL=$POSTMASTER_EMAIL \
+    bongo-mx
+  )
+}
+
+remove_mx() {
+  echo " - Removing mx"
+  docker rm -fv $PREFIX-mx >/dev/null 2>&1
+}
+
+deploy_webmail() {
+  echo " - Deploying webmail"
+  ID=$(docker run \
+    -ti \
+    -d \
+    --restart=always \
+    --name=$PREFIX-webmail \
+    -p $IP:80:80 \
+    -e ROUNDCUBE_SMTP_SERVER=$PREFIX-mx:25 \
+    -e ROUNDCUBE_DEFAULT_HOST=ssl://$PREFIX-mx \
+    -e ROUNDCUBE_MANAGESIEVE_HOST=$PREFIX-mx \
+    -v $VOLUMES/webmail:/var/www/db \
+    --link $PREFIX-mx \
+    robbertkl/roundcube
+  )
+}
+
+remove_webmail() {
+  echo " - Removing webmail"
+  docker rm -fv $PREFIX-webmail >/dev/null 2>&1
+}
+
+update_config() {
+  ID=$(docker run \
+    --rm \
+    --name=$PREFIX-config \
+    -v $VOLUMES/mail-config:/config \
+    -v $VOLUMES/config:/source \
+    bongo-config
+  )
+
+  echo $ID
+}
+
+if [ "$ACTION" = "deploy" ]; then
+
+  echo "Deploying Bongo..."
+  deploy_mx
+  deploy_webmail
+
+elif [ "$ACTION" = "remove" ]; then
+
+  echo "Removing Bongo..."
+  remove_mx
+  remove_webmail
+
+elif [ "$ACTION" = "config" ]; then
+
+  echo "Updating configuration"
+  update_config
+
+else
+
+  echo "Unknown action: $ACTION"
+  exit 1
+fi
+

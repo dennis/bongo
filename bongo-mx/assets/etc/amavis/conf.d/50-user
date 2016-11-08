@@ -1,0 +1,35 @@
+use strict;
+
+@bypass_virus_checks_maps = (
+   \%bypass_virus_checks, \@bypass_virus_checks_acl, \$bypass_virus_checks_re);
+
+@bypass_spam_checks_maps = (
+   \%bypass_spam_checks, \@bypass_spam_checks_acl, \$bypass_spam_checks_re);
+
+$virus_admin = 'postmaster@{{FQDN}}';
+$mailfrom_notify_spamadmin = $virus_admin;
+
+my $filename = '/config/postfix-domains';
+open my $fh, "<", $filename or die "could not open $filename: $!";
+
+while (defined (my $domain = <$fh>)) {
+  chomp $domain;
+  push(@local_domains_acl , $domain);
+}
+
+#@local_domains_acl = ('moellegaard.dk');
+
+$sa_tag_level_deflt = -999;
+$sa_local_tests_only = 0;
+$sa_tag2_level_deflt = 5.0;
+
+$final_spam_destiny=D_PASS;
+$final_virus_destiny      = D_REJECT; # (defaults to D_BOUNCE)
+$final_banned_destiny     = D_REJECT;  # (defaults to D_BOUNCE)
+
+# disable the "Received" headers to be added to the mail header
+$allowed_added_header_fields{lc('Received')} = 0;
+
+$sa_spam_subject_tag = undef;
+
+1;
