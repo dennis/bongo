@@ -44,7 +44,7 @@ deploy_mx() {
     -v $VOLUMES/mail-config:/config \
     -e FQDN=$FQDN \
     -e POSTMASTER_EMAIL=$POSTMASTER_EMAIL \
-    bongo-mx
+    dennismp/bongo-mx
   )
 }
 
@@ -81,7 +81,7 @@ update_config() {
     --name=$PREFIX-config \
     -v $VOLUMES/mail-config:/config \
     -v $VOLUMES/config:/source \
-    bongo-config
+    dennismp/bongo-config
   )
 
   echo $ID
