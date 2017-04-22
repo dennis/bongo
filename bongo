@@ -12,6 +12,7 @@ if [ "$1" != "" ] && [ "$1" = "-h" ]; then
   echo "  VOLUMES: where to store volumes (default /var/volumes)"
   echo "  FQDN: Full hostname of the mailserver (defaults to hostname --fqdn)"
   echo "  POSTMASTER_EMAIL: Your postmaster email (default postmaster@\${FQDN})"
+  echo "  VIRTUAL_HOST: Your webmail URL (default \${FQDN})"
   exit 1
 fi
 
@@ -20,6 +21,7 @@ PREFIX=${PREFIX:-bongo}
 VOLUMES=${VOLUMES:-/var/volumes}
 FQDN=${FQDN:-`hostname --fqdn`}
 POSTMASTER_EMAIL=${POSTMASTER_EMAIL:-postmaster@${FQDN}}
+VIRTUAL=${FQDN:-`hostname --fqdn`}
 
 deploy_mx() {
   echo " - Deploying mx"
@@ -60,11 +62,11 @@ deploy_webmail() {
     -d \
     --restart=always \
     --name=$PREFIX-webmail \
-    -p $IP:80:80 \
     -e ROUNDCUBE_SMTP_SERVER=$PREFIX-mx:25 \
     -e ROUNDCUBE_DEFAULT_HOST=ssl://$PREFIX-mx \
     -e ROUNDCUBE_MANAGESIEVE_HOST=$PREFIX-mx \
     -v $VOLUMES/webmail:/var/www/db \
+    -e VIRTUAL_HOST=$VIRTUAL_HOST \
     --link $PREFIX-mx \
     robbertkl/roundcube
   )
